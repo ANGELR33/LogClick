@@ -132,6 +132,15 @@ let tEnd = 10;
 let vidDuration = 100;
 let isDraggingLeft = false;
 let isDraggingRight = false;
+let isDraggingPlayhead = false;
+let zoomLevel = 1;
+const playhead = document.getElementById("playhead");
+const timelineContainer = document.getElementById("timelineContainer");
+const currentTimeLabel = document.getElementById("currentTimeLabel");
+const zoomInBtn = document.getElementById("zoomInBtn");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+const zoomResetBtn = document.getElementById("zoomResetBtn");
+const zoomLabel = document.getElementById("zoomLabel");
 
 function renderClipsEmpty() {
   clipsEl.innerHTML = `
@@ -191,11 +200,25 @@ function updateTimelineUI() {
   const p1 = (tStart / vidDuration) * 100;
   const p2 = (tEnd / vidDuration) * 100;
   
+  // Apply zoom
+  timelineTrack.style.width = `${zoomLevel * 100}%`;
+  if (zoomLabel) zoomLabel.textContent = `${zoomLevel}×`;
+  
   handleLeft.style.left = `${p1}%`;
   handleRight.style.left = `${p2}%`;
   
   timelineSelection.style.left = `${p1}%`;
   timelineSelection.style.width = `${p2 - p1}%`;
+  
+  // Playhead position
+  if (playhead) {
+      const currentTime = previewVideo.currentTime || 0;
+      const playheadPerc = (currentTime / vidDuration) * 100;
+      playhead.style.left = `${playheadPerc}%`;
+  }
+  if (currentTimeLabel) {
+      currentTimeLabel.textContent = formatTime(previewVideo.currentTime || 0);
+  }
   
   timeStartLabel.textContent = formatTime(tStart);
   timeEndLabel.textContent = formatTime(tEnd);
@@ -490,7 +513,20 @@ handleRight.addEventListener("mousedown", (e) => { isDraggingRight = true; e.pre
 handleLeft.addEventListener("touchstart", (e) => { isDraggingLeft = true; e.preventDefault(); }, {passive: false});
 handleRight.addEventListener("touchstart", (e) => { isDraggingRight = true; e.preventDefault(); }, {passive: false});
 
+// Playhead drag
+if (playhead) {
+    playhead.addEventListener("mousedown", (e) => { isDraggingPlayhead = true; e.preventDefault(); e.stopPropagation(); });
+    playhead.addEventListener("touchstart", (e) => { isDraggingPlayhead = true; e.preventDefault(); e.stopPropagation(); }, {passive: false});
+}
+
 const onDrag = (e) => {
+  if (isDraggingPlayhead) {
+      const perc = getPointerPerc(e);
+      const time = Math.max(0, Math.min(perc * vidDuration, vidDuration));
+      previewVideo.currentTime = time;
+      updateTimelineUI();
+      return;
+  }
   if (!isDraggingLeft && !isDraggingRight) return;
   const perc = getPointerPerc(e);
   let time = perc * vidDuration;
@@ -503,7 +539,7 @@ const onDrag = (e) => {
   }
   updateTimelineUI();
 };
-const onStopDrag = () => { isDraggingLeft = false; isDraggingRight = false; };
+const onStopDrag = () => { isDraggingLeft = false; isDraggingRight = false; isDraggingPlayhead = false; };
 
 window.addEventListener("mousemove", onDrag);
 window.addEventListener("touchmove", onDrag, {passive: false});
@@ -511,20 +547,48 @@ window.addEventListener("mouseup", onStopDrag);
 window.addEventListener("touchend", onStopDrag);
 
 timelineTrack.addEventListener("click", (e) => {
-  if (e.target === handleLeft || e.target === handleRight) return;
+  if (e.target === handleLeft || e.target === handleRight || e.target === playhead) return;
   const perc = getPointerPerc(e);
   const time = Math.max(0, Math.min(perc * vidDuration, vidDuration));
-  const distL = Math.abs(time - tStart);
-  const distR = Math.abs(time - tEnd);
-  if (distL < distR) {
-    tStart = Math.min(time, tEnd - 0.5);
-    previewVideo.currentTime = tStart;
-  } else {
-    tEnd = Math.max(time, tStart + 0.5);
-    previewVideo.currentTime = tEnd;
-  }
+  // Move playhead on single click (seek video)
+  previewVideo.currentTime = time;
   updateTimelineUI();
 });
+
+// Playhead live tracking
+previewVideo.addEventListener("timeupdate", () => {
+    if (!isDraggingPlayhead) updateTimelineUI();
+});
+
+// Zoom controls
+function applyZoom(newZoom) {
+    zoomLevel = Math.max(1, Math.min(newZoom, 20));
+    updateTimelineUI();
+    // Auto-scroll to keep selection visible
+    if (timelineContainer && zoomLevel > 1) {
+        const midTime = (tStart + tEnd) / 2;
+        const midPerc = midTime / vidDuration;
+        const trackWidth = timelineTrack.offsetWidth;
+        const containerWidth = timelineContainer.offsetWidth;
+        const scrollTarget = (midPerc * trackWidth) - (containerWidth / 2);
+        timelineContainer.scrollLeft = Math.max(0, scrollTarget);
+    }
+}
+
+if (zoomInBtn) zoomInBtn.addEventListener("click", () => applyZoom(zoomLevel + 1));
+if (zoomOutBtn) zoomOutBtn.addEventListener("click", () => applyZoom(zoomLevel - 1));
+if (zoomResetBtn) zoomResetBtn.addEventListener("click", () => applyZoom(1));
+
+// Mouse wheel zoom on timeline
+if (timelineContainer) {
+    timelineContainer.addEventListener("wheel", (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -1 : 1;
+            applyZoom(zoomLevel + delta);
+        }
+    }, { passive: false });
+}
 
 setStartBtn.addEventListener("click", () => {
    let time = previewVideo.currentTime;
