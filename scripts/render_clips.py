@@ -185,8 +185,6 @@ def build_ass(play_res_x: int, play_res_y: int, lines: list[dict], style_name: s
             
         ev.append(f"Dialogue: 0,{to_ass_time(start_t)},{to_ass_time(end_t)},Default,,0,0,0,,{text_out}")
 
-        ev.append(f"Dialogue: 0,{to_ass_time(start_t)},{to_ass_time(end_t)},Default,,0,0,0,,{text_out}")
-
     if watermark:
         ev.append("Dialogue: 0,0:00:00.00,9:59:59.99,Watermark,,0,0,0,,Angel R")
 
@@ -269,7 +267,15 @@ def main():
                     "start": s0 - start_s, 
                     "end": s1 - start_s, 
                     "text": s["text"],
-                    "words": s.get("words", [])
+                    "words": [
+                        {
+                            "start": max(0, float(w.get("start", s0)) - start_s),
+                            "end": max(0, float(w.get("end", s1)) - start_s),
+                            "text": w.get("text", ""),
+                        }
+                        for w in s.get("words", [])
+                        if float(w.get("end", 0)) > start_s and float(w.get("start", 999999)) < end_s
+                    ]
                 })
             if local_lines:
                 ass_path = os.path.join(args.outdir, f"clip_{i:02d}.ass")
