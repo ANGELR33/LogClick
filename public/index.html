@@ -79,7 +79,16 @@
                         <option value="medium" selected>Normal</option>
                     </select>
 
-                    <button id="uploadBtn" type="submit" class="primary-btn">Obtén clips en 1 clic</button>
+                    <div id="videoPreviewContainer" style="display: none; align-items: center; gap: 12px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px;">
+                        <video id="videoPreviewThumb" style="width: 80px; height: 45px; object-fit: cover; border-radius: 4px; background: #000;" muted></video>
+                        <div style="display: flex; flex-direction: column; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: calc(100% - 140px);">
+                            <span id="videoPreviewTitle" style="font-size: 14px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; color: #fff;"></span>
+                            <span id="videoPreviewMeta" style="font-size: 12px; color: var(--text-muted);"></span>
+                        </div>
+                        <button type="button" id="removeVideoBtn" style="margin-left: auto; background: none; border: none; color: #f43f5e; cursor: pointer; padding: 4px; font-size: 16px;"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+
+                    <button id="uploadBtn" type="submit" class="primary-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Obtén clips en 1 clic</button>
                 </form>
             </div>
 
@@ -98,19 +107,22 @@
         <!-- JOB STATUS UI (Hidden initially, toggled by JS like manual clips) -->
         <section id="jobTracker" class="job-tracker" style="display:none;">
            <div class="tracker-card">
-              <h3>Estado del proceso</h3>
-              <div class="statusGrid" style="margin-bottom: 1rem;">
+              <h3><i class="fa-solid fa-microchip" style="color: #eab308; margin-right: 8px;"></i> Estado del proceso</h3>
+              <div class="statusGrid" style="margin-bottom: 1.5rem;">
                 <div id="statusLine" class="status"></div>
                 <div class="progressWrap"><div class="progressBar" id="progressBar"></div></div>
-                <div id="stageLine" class="muted"></div>
-                <div id="warningLine" class="warning" style="display:none"></div>
+                <div id="stageLine" class="stageLine"></div>
+                <div id="warningLine" class="warning" style="display:none; color: #f43f5e; font-size: 13px; margin-top: 8px;"><i class="fa-solid fa-triangle-exclamation"></i> <span></span></div>
               </div>
               
-              <div id="completedActions" style="display:none; margin-bottom: 1rem;">
-                  <button id="viewClipsBtn" type="button" class="primary-btn"><i class="fa-solid fa-play"></i> Ver mis recortes generados</button>
+              <div id="completedActions" style="display:none; margin-bottom: 1.5rem;">
+                  <button id="viewClipsBtn" type="button" class="btn" style="background: #fff; color: #000; font-weight: 700; padding: 12px 24px; border-radius: 10px; border: none; font-size: 15px; box-shadow: 0 4px 12px rgba(255,255,255,0.15); transition: transform 0.2s;"><i class="fa-solid fa-play" style="margin-right: 6px;"></i> Ver mis recortes generados</button>
               </div>
               
-              <details class="details"><summary>Detalles técnicos (Logs)</summary><pre id="jobStatus" class="pre"></pre></details>
+              <details class="details">
+                  <summary><i class="fa-solid fa-caret-right" style="margin-right: 8px;"></i> Detalles técnicos (Logs)</summary>
+                  <pre id="jobStatus" class="pre"></pre>
+              </details>
               
               <!-- Hidden required IDs -->
               <div style="display:none">
@@ -129,26 +141,58 @@
                 <h2>Recorte Manual</h2>
                 <div class="cardHint muted">Ingresa los tiempos de inicio y fin para tus clips.</div>
             </div>
-            <div style="margin-bottom: 1rem;">
-                <video id="previewVideo" controls preload="metadata" style="width: 100%; border-radius: 8px; background: #000;"></video>
+            <div style="margin-bottom: 1rem; display: flex; justify-content: center; background: #0a0a0b; border-radius: 12px; padding: 8px; border: 1px solid #1c1c1e;">
+                <video id="previewVideo" controls preload="metadata" style="max-height: 45vh; max-width: 100%; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); background: transparent;"></video>
             </div>
             <!-- Timeline UI -->
             <div class="timeline-container">
                 <div class="timeline-track" id="timelineTrack">
-                <div class="timeline-selection" id="timelineSelection"></div>
-                <div class="timeline-handle handle-left" id="handleLeft"></div>
-                <div class="timeline-handle handle-right" id="handleRight"></div>
+                    <div class="timeline-track-inner" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border-radius: 8px;">
+                        <div class="timeline-frames" id="timelineFrames"></div>
+                        <div class="timeline-selection" id="timelineSelection"></div>
+                    </div>
+                    <div class="timeline-handle handle-left" id="handleLeft"></div>
+                    <div class="timeline-handle handle-right" id="handleRight"></div>
                 </div>
                 <div class="timeline-labels">
                 <span id="timeStartLabel">00:00.0</span>
                 <span id="timeEndLabel">00:00.0</span>
                 </div>
-                <div class="timeline-controls">
-                <div style="display: flex; gap: 8px;">
-                    <button id="setStartBtn" type="button" class="btn secondary" style="font-size: 13px;">[ Marcar Inicio</button>
-                    <button id="setEndBtn" type="button" class="btn secondary" style="font-size: 13px;">Marcar Fin ]</button>
-                </div>
-                <button id="addClipSelectionBtn" type="button" class="btn" style="font-size: 13px;">+ Añadir a la Lista</button>
+                <div class="timeline-controls" style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Control de Precisión -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #141416; padding: 16px; border-radius: 12px; border: 1px solid #28282b; flex-wrap: wrap; gap: 16px;">
+                        
+                        <!-- Control Inicio -->
+                        <div style="display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 250px;">
+                            <label style="font-size: 13px; font-weight: 600; color: #8b8b92;"><i class="fa-solid fa-play" style="font-size: 10px; color: #eab308; margin-right: 4px;"></i> Punto de Inicio</label>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button type="button" class="btn secondary" id="nudgeStartMinus" title="-0.1s" style="padding: 6px 10px;"><i class="fa-solid fa-minus"></i></button>
+                                <input type="number" id="manualStartInput" value="0.0" step="0.1" min="0" style="width: 80px; background: #0a0a0b; color: #fff; border: 1px solid #333; padding: 8px; border-radius: 6px; font-family: monospace; text-align: center; font-size: 14px;">
+                                <button type="button" class="btn secondary" id="nudgeStartPlus" title="+0.1s" style="padding: 6px 10px;"><i class="fa-solid fa-plus"></i></button>
+                                <button id="setStartBtn" type="button" class="btn secondary" style="font-size: 13px; margin-left: auto;">[ Usar Actual</button>
+                            </div>
+                        </div>
+
+                        <!-- Botón Central Test -->
+                        <div style="display: flex; justify-content: center; align-items: center; padding: 0 16px;">
+                             <button id="testCutBtn" type="button" class="btn secondary" title="Previsualizar Recorte" style="border-radius: 50%; width: 54px; height: 54px; font-size: 20px; color: #eab308; border-color: rgba(234, 179, 8, 0.4); transition: transform 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-play"></i></button>
+                        </div>
+
+                        <!-- Control Fin -->
+                        <div style="display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 250px; align-items: flex-end;">
+                            <label style="font-size: 13px; font-weight: 600; color: #8b8b92;">Punto de Fin <i class="fa-solid fa-stop" style="font-size: 10px; color: #f43f5e; margin-left: 4px;"></i></label>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-direction: row-reverse;">
+                                <button type="button" class="btn secondary" id="nudgeEndPlus" title="+0.1s" style="padding: 6px 10px;"><i class="fa-solid fa-plus"></i></button>
+                                <input type="number" id="manualEndInput" value="0.0" step="0.1" min="0" style="width: 80px; background: #0a0a0b; color: #fff; border: 1px solid #333; padding: 8px; border-radius: 6px; font-family: monospace; text-align: center; font-size: 14px;">
+                                <button type="button" class="btn secondary" id="nudgeEndMinus" title="-0.1s" style="padding: 6px 10px;"><i class="fa-solid fa-minus"></i></button>
+                                <button id="setEndBtn" type="button" class="btn secondary" style="font-size: 13px; margin-right: auto;">Usar Actual ]</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: center; margin-top: 8px;">
+                        <button id="addClipSelectionBtn" type="button" class="btn" style="font-size: 15px; padding: 12px 32px; border-radius: 12px; font-weight: 700; background: #eab308; color: #000; border: none; box-shadow: 0 4px 16px rgba(234, 179, 8, 0.2); transition: transform 0.1s;"><i class="fa-solid fa-scissors" style="margin-right: 6px;"></i> Añadir a la Lista</button>
+                    </div>
                 </div>
             </div>
 
@@ -156,22 +200,74 @@
                 <!-- Valid clips will be rendered here as nice cards -->
             </div>
             
-            <div class="row actions" style="justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="muted" style="font-size: 13px;">Estilo de subtítulos:</span>
-                    <select id="subtitleStyleSelect" class="btn secondary" style="width: auto; padding: 6px 12px; font-size: 13px;">
-                        <option value="karaoke_yellow" selected>Karaoke (Blanco + Amarillo)</option>
-                        <option value="karaoke_cyan">Karaoke (Blanco + Cian Gaming)</option>
-                        <option value="karaoke_green">Karaoke (Blanco + Verde)</option>
-                        <option value="karaoke_magenta">Karaoke (Blanco + Magenta Vibe)</option>
-                        <option value="opus">Básico (Amarillo + Pop)</option>
-                        <option value="clean">Básico (Blanco + Suave)</option>
-                        <option value="neon">Básico (Cian + Rebote)</option>
-                        <option value="boxed">Boxed (Fondo Negro)</option>
-                    </select>
+            <div style="display: flex; flex-direction: column; gap: 16px; width: 100%; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.5rem;">
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="muted" style="font-size: 14px; font-weight: 500;">Estilo de subtítulos:</span>
+                        <select id="subtitleStyleSelect" class="btn secondary" style="width: auto; padding: 10px 16px; font-size: 14px; font-weight: 500; border-radius: 8px;">
+                            <option value="karaoke_yellow" selected>Karaoke (Blanco + Amarillo)</option>
+                            <option value="karaoke_cyan">Karaoke (Blanco + Cian Gaming)</option>
+                            <option value="karaoke_green">Karaoke (Blanco + Verde)</option>
+                            <option value="karaoke_magenta">Karaoke (Blanco + Magenta Vibe)</option>
+                            <option value="opus">Básico (Amarillo + Pop)</option>
+                            <option value="clean">Básico (Blanco + Suave)</option>
+                            <option value="neon">Básico (Cian + Rebote)</option>
+                            <option value="boxed">Boxed (Fondo Negro)</option>
+                        </select>
+                    </div>
+                    <button id="submitClipsBtn" type="button" class="primary-btn" style="padding: 12px 32px; font-size: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(255,255,255,0.1);">Procesar Clips <span id="clipsCountBadge"></span></button>
                 </div>
-                <button id="submitClipsBtn" type="button" class="primary-btn" style="padding: 12px 24px;">Procesar Clips <span id="clipsCountBadge"></span></button>
-            </div>
+
+                    <div style="display: flex; gap: 12px; overflow-x: auto; padding: 8px 0; width: 100%; max-width: 100%; padding-bottom: 8px;" class="custom-scroll" id="stylePreviewsContainer">
+                        <div class="style-preview active" data-val="karaoke_yellow" onclick="setStyleVal(this)" style="min-width: 140px; height: 80px; background: #222; border-radius: 8px; border: 1px solid var(--primary); display: flex; align-items: center; justify-content: center; font-family: 'Arial Black', sans-serif; font-size: 14px; text-align: center; line-height: 1.2; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+                            <span style="color:#fff;">ME <span style="color: yellow; text-shadow: 0px 2px 4px #000;">GUSTA</span></span><br><span style="color:#fff;">ESTO</span>
+                        </div>
+                        <div class="style-preview" data-val="karaoke_cyan" onclick="setStyleVal(this)" style="min-width: 140px; height: 80px; background: #222; border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-family: 'Verdana', sans-serif; font-size: 12px; font-weight: bold; text-align: center; line-height: 1.2; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+                            <span style="color:#fff;">MODO <span style="color: cyan; text-shadow: 0px 2px 4px #000; transform: scale(1.1); display: inline-block;">GAMER</span></span><br><span style="color:#fff;">ACTIVO</span>
+                        </div>
+                        <div class="style-preview" data-val="karaoke_green" onclick="setStyleVal(this)" style="min-width: 140px; height: 80px; background: #222; border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-family: 'Impact', sans-serif; font-size: 15px; text-align: center; line-height: 1.2; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+                            <span style="color:#fff;">VAMOS <span style="color: #00FF00; text-shadow: 2px 2px 0px #000;">SUBIENDO</span></span><br><span style="color:#fff;">RÁPIDO</span>
+                        </div>
+                        <div class="style-preview" data-val="karaoke_magenta" onclick="setStyleVal(this)" style="min-width: 140px; height: 80px; background: #222; border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-family: 'Comic Sans MS', sans-serif; font-size: 13px; font-weight: bold; text-align: center; line-height: 1.2; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+                            <span style="color:#fff;">MUY <span style="color: #FF00FF; text-shadow: 0px 2px 4px #000;">DIVERTIDO</span></span><br><span style="color:#fff;">AMIGOS</span>
+                        </div>
+                        <div class="style-preview" data-val="opus" onclick="setStyleVal(this)" style="min-width: 140px; height: 80px; background: #222; border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-family: 'Arial', sans-serif; font-size: 13px; font-weight: bold; text-align: center; line-height: 1.2; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+                            <span style="color: yellow; text-transform: uppercase; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 4px 4px rgba(0,0,0,0.8);">TEXTO OPUS<br>BÁSICO</span>
+                        </div>
+                        <div class="style-preview" data-val="boxed" onclick="setStyleVal(this)" style="min-width: 140px; height: 80px; background: #222; border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-family: 'Arial', sans-serif; font-size: 13px; font-weight: normal; text-align: center; line-height: 1.2; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+                            <span style="background: rgba(0,0,0,0.7); color: #fff; padding: 4px 8px; border-radius: 4px;">TEXTO BOXED<br>ELEGANTE</span>
+                        </div>
+                    </div>
+                    
+                    <script>
+                        function setStyleVal(el) {
+                            const val = el.getAttribute("data-val");
+                            const select = document.getElementById("subtitleStyleSelect");
+                            if (select) select.value = val;
+                            
+                            const previews = document.querySelectorAll('.style-preview');
+                            previews.forEach(p => {
+                                p.classList.remove('active');
+                                p.style.borderColor = '#333';
+                            });
+                            el.classList.add('active');
+                        }
+
+                        // Also sync back if user changes dropdown directly
+                        document.getElementById("subtitleStyleSelect").addEventListener("change", function(e) {
+                            const val = e.target.value;
+                            const previews = document.querySelectorAll('.style-preview');
+                            previews.forEach(p => {
+                                p.classList.remove('active');
+                                p.style.borderColor = '#333';
+                                if(p.getAttribute("data-val") === val) {
+                                    p.classList.add('active');
+                                }
+                            });
+                        });
+                    </script>
+                </div>
         </section>
 
         <!-- Projects List (Bottom) -->
@@ -202,6 +298,20 @@
                 </div>
                 <div id="modalClipsGrid" style="display:flex; flex-wrap: wrap; gap: 24px; justify-content: flex-start;">
                     <!-- Clips go here -->
+                </div>
+            </div>
+        </div>
+        <!-- Small Delete Confirmation Modal -->
+        <div id="deleteModal" class="small-modal-backdrop">
+            <div class="small-modal-content">
+                <div class="small-modal-icon">
+                    <i class="fa-solid fa-trash-can"></i>
+                </div>
+                <div class="small-modal-title">¿Eliminar proyecto?</div>
+                <div class="small-modal-text">Esta acción no se puede deshacer. Se eliminarán el video y los recortes.</div>
+                <div class="small-modal-actions">
+                    <button type="button" class="btn-cancel" id="cancelDeleteBtn">Cancelar</button>
+                    <button type="button" class="btn-confirm-delete" id="confirmDeleteBtn">Eliminar</button>
                 </div>
             </div>
         </div>

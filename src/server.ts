@@ -6,7 +6,7 @@ import pinoHttpImport from "pino-http";
 import path from "node:path";
 import fs from "node:fs";
 
-import { createJob, getJob, getAllJobs, getJobArtifactPath, jobsRootDir } from "./storage/jobs.js";
+import { createJob, getJob, getAllJobs, getJobArtifactPath, jobsRootDir, deleteJob } from "./storage/jobs.js";
 import { enqueueJob, getQueueStatus } from "./workers/queue.js";
 import { resumeJobPipeline } from "./workers/runner.js";
 
@@ -62,6 +62,11 @@ app.get("/api/jobs/:jobId", async (req, res) => {
 app.get("/api/jobs", async (req, res) => {
   const jobs = await getAllJobs();
   res.json(jobs);
+});
+
+app.delete("/api/jobs/:jobId", async (req, res) => {
+  await deleteJob(req.params.jobId);
+  res.json({ success: true });
 });
 
 app.post("/api/jobs/:jobId/clips", async (req, res) => {

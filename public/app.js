@@ -4,6 +4,51 @@ const uploadBtn = document.getElementById("uploadBtn");
 const resetBtn = document.getElementById("resetBtn");
 const aggressivenessEl = document.getElementById("aggressiveness");
 
+const videoPreviewContainer = document.getElementById("videoPreviewContainer");
+const videoPreviewThumb = document.getElementById("videoPreviewThumb");
+const videoPreviewTitle = document.getElementById("videoPreviewTitle");
+const videoPreviewMeta = document.getElementById("videoPreviewMeta");
+const removeVideoBtn = document.getElementById("removeVideoBtn");
+
+window.updateUploadBtnState = function() {
+    if (videoInput.files && videoInput.files.length > 0) {
+        uploadBtn.disabled = false;
+        uploadBtn.style.opacity = '1';
+        uploadBtn.style.cursor = 'pointer';
+        
+        const file = videoInput.files[0];
+        if (videoPreviewTitle) videoPreviewTitle.textContent = file.name;
+        if (videoPreviewMeta) videoPreviewMeta.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+        
+        if (videoPreviewThumb) {
+            const fileUrl = URL.createObjectURL(file);
+            videoPreviewThumb.src = fileUrl;
+            videoPreviewThumb.onloadeddata = () => {
+                videoPreviewThumb.currentTime = Math.min(1, videoPreviewThumb.duration / 2 || 0);
+            };
+        }
+        if (videoPreviewContainer) videoPreviewContainer.style.display = 'flex';
+    } else {
+        uploadBtn.disabled = true;
+        uploadBtn.style.opacity = '0.5';
+        uploadBtn.style.cursor = 'not-allowed';
+        if (videoPreviewContainer) videoPreviewContainer.style.display = 'none';
+        if (videoPreviewThumb) videoPreviewThumb.src = '';
+    }
+}
+
+if (videoInput) {
+    videoInput.addEventListener('change', window.updateUploadBtnState);
+}
+
+if (removeVideoBtn) {
+    removeVideoBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        videoInput.value = '';
+        window.updateUploadBtnState();
+    });
+}
+
 const jobIdInput = document.getElementById("jobIdInput");
 const loadJobBtn = document.getElementById("loadJobBtn");
 const jobStatus = document.getElementById("jobStatus");
@@ -39,6 +84,46 @@ const timeStartLabel = document.getElementById("timeStartLabel");
 const timeEndLabel = document.getElementById("timeEndLabel");
 const setStartBtn = document.getElementById("setStartBtn");
 const setEndBtn = document.getElementById("setEndBtn");
+
+let projectToDelete = null;
+const deleteModal = document.getElementById('deleteModal');
+const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+if (cancelDeleteBtn) {
+    cancelDeleteBtn.addEventListener('click', () => {
+        deleteModal.classList.remove('show');
+        setTimeout(() => { deleteModal.style.display = 'none'; }, 200);
+        projectToDelete = null;
+    });
+}
+
+if (confirmDeleteBtn) {
+    confirmDeleteBtn.addEventListener('click', async () => {
+        if(!projectToDelete) return;
+        const jobId = projectToDelete;
+        projectToDelete = null;
+        
+        confirmDeleteBtn.disabled = true;
+        confirmDeleteBtn.textContent = "Eliminando...";
+        
+        try {
+            const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, { method: "DELETE" });
+            if(res.ok) {
+                deleteModal.classList.remove('show');
+                setTimeout(() => { deleteModal.style.display = 'none'; }, 200);
+                loadProjects();
+            } else {
+                alert("No se pudo eliminar el proyecto");
+            }
+        } finally {
+            confirmDeleteBtn.disabled = false;
+            confirmDeleteBtn.textContent = "Eliminar";
+            deleteModal.classList.remove('show');
+            setTimeout(() => { deleteModal.style.display = 'none'; }, 200);
+        }
+    });
+}
 
 let pollTimer = null;
 let customClips = [];
@@ -114,6 +199,11 @@ function updateTimelineUI() {
   
   timeStartLabel.textContent = formatTime(tStart);
   timeEndLabel.textContent = formatTime(tEnd);
+  
+  const manualStartInput = document.getElementById("manualStartInput");
+  const manualEndInput = document.getElementById("manualEndInput");
+  if (manualStartInput) manualStartInput.value = tStart.toFixed(1);
+  if (manualEndInput) manualEndInput.value = tEnd.toFixed(1);
 }
 
 function renderClipsList() {
@@ -153,7 +243,12 @@ function renderStatus(job) {
   progressBar.style.width = `${Math.round(p * 100)}%`;
   stageLine.textContent = job.stage ? `Paso: ${humanStage(job.stage)}` : "";
 
-  warningLine.textContent = (job.warnings && job.warnings.length > 0) ? job.warnings[0] : "";
+  const warnSpan = warningLine.querySelector('span');
+  if (warnSpan) {
+      warnSpan.textContent = (job.warnings && job.warnings.length > 0) ? job.warnings[0] : "";
+  } else {
+      warningLine.textContent = (job.warnings && job.warnings.length > 0) ? job.warnings[0] : "";
+  }
   warningLine.style.display = (job.warnings && job.warnings.length > 0) ? "block" : "none";
 
   if (job.status === "completed") {
@@ -299,6 +394,7 @@ async function loadJob(jobId) {
               tStart = 0;
               tEnd = Math.min(vidDuration, 15);
               updateTimelineUI();
+              extractTimelineFrames(previewVideo.src, vidDuration);
            }
         };
         renderClipsList();
@@ -308,6 +404,77 @@ async function loadJob(jobId) {
   }
 
   return job;
+}
+
+const timelineFrames = document.getElementById("timelineFrames");
+let currentExtractJob = 0;
+
+async function extractTimelineFrames(videoSrc, duration) {
+  if (!timelineFrames) return;
+  
+  const extractId = ++currentExtractJob;
+  timelineFrames.innerHTML = "";
+  
+  const width = timelineTrack.clientWidth || 800;
+  const avgFrameWidth = 48; // aprox square frames based on track height
+  const numFrames = Math.max(5, Math.ceil(width / avgFrameWidth));
+  
+  for(let i=0; i<numFrames; i++) {
+    let div = document.createElement("div");
+    div.className = "placeholder-frame";
+    timelineFrames.appendChild(div);
+  }
+  
+  try {
+      const v = document.createElement("video");
+      v.src = videoSrc;
+      v.muted = true;
+      v.crossOrigin = "anonymous";
+      
+      await new Promise((r) => { 
+          v.onloadedmetadata = r; 
+          v.onerror = r;
+      });
+      if (v.error) return;
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const vw = v.videoWidth || 1280;
+      const vh = v.videoHeight || 720;
+      
+      const targetHeight = 48;
+      const targetWidth = Math.round(targetHeight * (vw / vh));
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      
+      const step = duration / numFrames;
+      
+      for(let i=0; i<numFrames; i++) {
+         if (currentExtractJob !== extractId) break;
+         
+         const time = Math.min(duration, (i + 0.5) * step);
+         v.currentTime = time;
+         
+         await new Promise((resolve) => {
+             const onSeeked = () => { v.removeEventListener('seeked', onSeeked); resolve(); };
+             v.addEventListener('seeked', onSeeked);
+             setTimeout(resolve, 500); // timeout fallback
+         });
+         
+         if (currentExtractJob !== extractId) break;
+
+         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+         const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+         
+         const img = document.createElement("img");
+         img.src = dataUrl;
+         if (timelineFrames.children[i]) {
+            timelineFrames.replaceChild(img, timelineFrames.children[i]);
+         }
+      }
+  } catch(e) {
+      console.warn("Could not extract frames due to CORS or other issue");
+  }
 }
 
 // --- Drag Logic ---
@@ -368,6 +535,80 @@ setEndBtn.addEventListener("click", () => {
    let time = previewVideo.currentTime;
    tEnd = Math.max(time, tStart + 0.5);
    updateTimelineUI();
+});
+
+// Precision Controls
+const manualStartInput = document.getElementById("manualStartInput");
+const manualEndInput = document.getElementById("manualEndInput");
+const nudgeStartMinus = document.getElementById("nudgeStartMinus");
+const nudgeStartPlus = document.getElementById("nudgeStartPlus");
+const nudgeEndMinus = document.getElementById("nudgeEndMinus");
+const nudgeEndPlus = document.getElementById("nudgeEndPlus");
+const testCutBtn = document.getElementById("testCutBtn");
+
+if (manualStartInput) manualStartInput.addEventListener("change", (e) => {
+    let val = parseFloat(e.target.value);
+    if (!isNaN(val)) {
+        tStart = Math.max(0, Math.min(val, tEnd - 0.5));
+        previewVideo.currentTime = tStart;
+        updateTimelineUI();
+    }
+});
+
+if (manualEndInput) manualEndInput.addEventListener("change", (e) => {
+    let val = parseFloat(e.target.value);
+    if (!isNaN(val)) {
+        tEnd = Math.min(vidDuration, Math.max(val, tStart + 0.5));
+        previewVideo.currentTime = tEnd;
+        updateTimelineUI();
+    }
+});
+
+if (nudgeStartMinus) nudgeStartMinus.addEventListener("click", () => {
+    tStart = Math.max(0, tStart - 0.1);
+    previewVideo.currentTime = tStart;
+    updateTimelineUI();
+});
+
+if (nudgeStartPlus) nudgeStartPlus.addEventListener("click", () => {
+    tStart = Math.min(tStart + 0.1, tEnd - 0.5);
+    previewVideo.currentTime = tStart;
+    updateTimelineUI();
+});
+
+if (nudgeEndMinus) nudgeEndMinus.addEventListener("click", () => {
+    tEnd = Math.max(tEnd - 0.1, tStart + 0.5);
+    previewVideo.currentTime = tEnd;
+    updateTimelineUI();
+});
+
+if (nudgeEndPlus) nudgeEndPlus.addEventListener("click", () => {
+    tEnd = Math.min(tEnd + 0.1, vidDuration);
+    previewVideo.currentTime = tEnd;
+    updateTimelineUI();
+});
+
+let testInterval = null;
+if (testCutBtn) testCutBtn.addEventListener("click", () => {
+    if (previewVideo.paused) {
+        previewVideo.currentTime = tStart;
+        previewVideo.play();
+        testCutBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        
+        if (testInterval) clearInterval(testInterval);
+        testInterval = setInterval(() => {
+            if (previewVideo.currentTime >= tEnd) {
+                previewVideo.pause();
+                previewVideo.currentTime = tStart;
+                testCutBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+                clearInterval(testInterval);
+            }
+        }, 50);
+    } else {
+        previewVideo.pause();
+        testCutBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+        if (testInterval) clearInterval(testInterval);
+    }
 });
 
 addClipSelectionBtn.addEventListener("click", () => {
@@ -439,6 +680,8 @@ uploadForm.addEventListener("submit", async (e) => {
 
   uploadBtn.disabled = true;
   uploadBtn.textContent = "Subiendo...";
+  uploadBtn.style.opacity = '0.5';
+  uploadBtn.style.cursor = 'not-allowed';
 
   try {
     const fd = new FormData();
@@ -459,7 +702,9 @@ uploadForm.addEventListener("submit", async (e) => {
     startPolling(jobId);
   } finally {
     uploadBtn.disabled = false;
-    uploadBtn.textContent = "Subir y procesar";
+    uploadBtn.textContent = "Obtén clips en 1 clic";
+    uploadBtn.style.opacity = '1';
+    uploadBtn.style.cursor = 'pointer';
   }
 });
 
@@ -480,6 +725,7 @@ resetBtn.addEventListener("click", () => {
   customClips = [];
   renderClipsList();
   previewVideo.src = "";
+  if (typeof window.updateUploadBtnState === 'function') window.updateUploadBtnState();
 });
 
 renderClipsEmpty();
@@ -519,6 +765,7 @@ async function loadProjects() {
         <div class="thumbWrapper" style="cursor: pointer; aspect-ratio: 16/9; height: auto; border-radius: 12px; overflow: hidden; position: relative;">
             <img src="${thumbUrl}" alt="thumbnail" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&q=80&w=400&h=200'">
             <span class="plan-badge" style="background: rgba(0,0,0,0.7); color:#fff; border: 1px solid rgba(255,255,255,0.2);">Listo</span>
+            <button class="delete-project-btn" title="Eliminar proyecto"><i class="fa-solid fa-trash-can"></i></button>
         </div>
         <div class="card-meta" style="margin-top: 12px; cursor: pointer;">
             <div style="font-weight: 700; font-size: 15px; color: #fff; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;" title="${job.originalFilename}">${job.originalFilename}</div>
@@ -527,6 +774,19 @@ async function loadProjects() {
             </div>
         </div>
       `;
+      
+      const delBtn = card.querySelector('.delete-project-btn');
+      if (delBtn) {
+          delBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              projectToDelete = job.id;
+              if(deleteModal) {
+                  deleteModal.style.display = 'flex';
+                  setTimeout(() => deleteModal.classList.add('show'), 10);
+              }
+          });
+      }
+      
       grid.appendChild(card);
     }
   } catch(e) {

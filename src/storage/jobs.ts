@@ -137,3 +137,12 @@ export async function markArtifact(jobId: string, key: string, filename: string)
   job.artifacts[key] = getJobArtifactPath(jobId, filename);
   await saveJob(job);
 }
+
+export async function deleteJob(jobId: string) {
+  const dir = getJobDir(jobId);
+  try {
+    await fs.rm(dir, { recursive: true, force: true });
+  } catch (e) {
+    console.error("Failed to delete job", jobId, e);
+  }
+}

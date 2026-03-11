@@ -127,16 +127,16 @@ def build_ass(play_res_x: int, play_res_y: int, lines: list[dict], style_name: s
             
         if style_name.startswith("karaoke") and words:
             highlight_color = "&H00FFFF&" # default yellow
-            anim_tag = "{\\t(0,50,\\fscx105\\fscy105)\\t(50,200,\\fscx100\\fscy100)}"
+            anim_tag = "\\t(0,50,\\fscx105\\fscy105)\\t(50,200,\\fscx100\\fscy100)"
             if style_name == "karaoke_cyan": 
                 highlight_color = "&HFFFF00&"
-                anim_tag = "{\\t(0,40,\\fscx110\\fscy110)\\t(40,150,\\fscx100\\fscy100)}" 
+                anim_tag = "\\t(0,40,\\fscx110\\fscy110)\\t(40,150,\\fscx100\\fscy100)" 
             elif style_name == "karaoke_green": 
                 highlight_color = "&H00FF00&"
-                anim_tag = "{\\t(0,60,\\fscx108\\fscy108)\\t(60,200,\\fscx100\\fscy100)}"
+                anim_tag = "\\t(0,60,\\fscx108\\fscy108)\\t(60,200,\\fscx100\\fscy100)"
             elif style_name == "karaoke_magenta": 
                 highlight_color = "&HFF00FF&"
-                anim_tag = "{\\t(0,30,\\fscx115\\fscy115)\\t(30,100,\\fscx100\\fscy100)}"
+                anim_tag = "\\t(0,30,\\fscx115\\fscy115)\\t(30,100,\\fscx100\\fscy100)"
 
             full_text_parts = [ass_escape(w.get("text", "").strip().upper()) for w in words]
             mid = math.ceil(len(full_text_parts) / 2) if len(full_text_parts) > 2 else len(full_text_parts)
@@ -155,15 +155,14 @@ def build_ass(play_res_x: int, play_res_y: int, lines: list[dict], style_name: s
                     if j == mid and mid > 0 and mid < len(full_text_parts):
                         colored_text = colored_text.strip() + "\\N"
                     if j == i:
-                        colored_text += f"{{\\c{highlight_color}}}" + part + "{\\c} "
+                        colored_text += f"{{{anim_tag}\\c{highlight_color}}}" + part + "{\\fscx100\\fscy100\\c} "
                     else:
                         colored_text += part + " "
                 
                 colored_text = colored_text.strip()
                 t_s = to_ass_time(w_start)
                 t_e = to_ass_time(w_end)
-                text_out = anim_tag + colored_text
-                ev.append(f"Dialogue: 0,{t_s},{t_e},Default,,0,0,0,,{text_out}")
+                ev.append(f"Dialogue: 0,{t_s},{t_e},Default,,0,0,0,,{colored_text}")
             continue
 
         if style_name in ["opus", "neon", "boxed"] or style_name.startswith("karaoke"):
