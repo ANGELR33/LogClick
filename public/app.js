@@ -226,23 +226,43 @@ async function loadClips(jobId, showModal = false) {
   
   if(showModal) modalClipsGrid.innerHTML = "";
 
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     const url = `/api/jobs/${encodeURIComponent(jobId)}/clips/${encodeURIComponent(item.video)}`;
     const thumbUrl = item.thumb
       ? `/api/jobs/${encodeURIComponent(jobId)}/clips/${encodeURIComponent(item.thumb)}`
       : null;
       
     const wrap = document.createElement("div");
-    wrap.className = "clip";
-    wrap.style.display = "flex"; wrap.style.flexDirection = "column"; wrap.style.gap = "0.5rem";
-    wrap.style.background = "rgba(255,255,255,0.05)"; wrap.style.padding = "1rem"; wrap.style.borderRadius = "8px";
+    wrap.className = "clip-card-pro";
+    wrap.style.width = "220px";
+    wrap.style.flexShrink = "0";
+    wrap.style.background = "#141416";
+    wrap.style.border = "1px solid #28282b";
+    wrap.style.borderRadius = "16px";
+    wrap.style.overflow = "hidden";
+    wrap.style.display = "flex";
+    wrap.style.flexDirection = "column";
+    wrap.style.boxShadow = "0 8px 24px rgba(0,0,0,0.4)";
+    wrap.style.transition = "transform 0.2s ease";
     
     wrap.innerHTML = `
-      ${thumbUrl ? `<img class=\"thumb\" src=\"${thumbUrl}\" alt=\"thumbnail\" style=\"width:100%; border-radius:4px;\"/>` : ""}
-      <div class="clipName" style="font-weight:600;">${item.video}</div>
-      <video controls preload="metadata" src="${url}" style="width:100%; border-radius:4px; max-height:150px; background:#000;"></video>
-      <button class="primary-btn" onclick="downloadClipWithTitle('${url}', '${item.video}')" style="margin-top:auto;"><i class="fa-solid fa-download"></i> Descargar</button>
+      <div style="position: relative; width: 100%; aspect-ratio: 9/16; background: #000;">
+         <video controls preload="metadata" poster="${thumbUrl || ''}" src="${url}" style="width: 100%; height: 100%; object-fit: cover;"></video>
+      </div>
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1;">
+          <div style="font-weight: 700; font-size: 16px; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+             <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;" title="${item.video}">${item.video}</span>
+             <span style="font-size: 12px; color: #8b8b92; font-weight: 500;">9:16</span>
+          </div>
+          <button class="primary-btn" onclick="downloadClipWithTitle('${url}', '${item.video}')" style="width: 100%; padding: 12px 0; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: auto;">
+             <i class="fa-solid fa-download"></i> Descargar
+          </button>
+      </div>
     `;
+    
+    wrap.onmouseenter = () => wrap.style.transform = "translateY(-4px)";
+    wrap.onmouseleave = () => wrap.style.transform = "translateY(0)";
 
     if(showModal) modalClipsGrid.appendChild(wrap);
     else clipsEl.appendChild(wrap);

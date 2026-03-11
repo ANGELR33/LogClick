@@ -194,13 +194,13 @@
         </div>
 
         <!-- CLIPS MODAL FOR PROJECT -->
-        <div id="projectModal" class="modal-backdrop" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 1000; align-items:center; justify-content:center;">
-            <div class="modal-content" style="background:#1e1e1e; border: 1px solid #333; padding: 2rem; border-radius: 12px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                    <h2 id="modalProjectTitle" style="margin:0;">Project Clips</h2>
-                    <button class="nav-ico" onclick="document.getElementById('projectModal').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+        <div id="projectModal" class="modal-backdrop" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index: 1000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
+            <div class="modal-content custom-scroll" style="background:var(--bg-main); border: 1px solid #28282b; padding: 2.5rem; border-radius: 24px; max-width: 1100px; width: 95%; max-height: 85vh; overflow-y: auto; box-shadow: 0 24px 48px rgba(0,0,0,0.5);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
+                    <h2 id="modalProjectTitle" style="margin:0; font-weight: 800; font-size: 24px;">Mis Recortes</h2>
+                    <button class="nav-ico" onclick="document.getElementById('projectModal').style.display='none'" style="background: rgba(255,255,255,0.1);"><i class="fa-solid fa-xmark"></i></button>
                 </div>
-                <div id="modalClipsGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+                <div id="modalClipsGrid" style="display:flex; flex-wrap: wrap; gap: 24px; justify-content: flex-start;">
                     <!-- Clips go here -->
                 </div>
             </div>
