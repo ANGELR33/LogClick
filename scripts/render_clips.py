@@ -17,7 +17,7 @@ def ass_escape(text: str) -> str:
     return (text or "").replace("\\", "\\\\").replace("{", "(").replace("}", ")").replace("\n", "\\N")
 
 
-def build_ass(play_res_x: int, play_res_y: int, lines: list[dict], style_name: str = "opus") -> str:
+def build_ass(play_res_x: int, play_res_y: int, lines: list[dict], style_name: str = "opus", watermark: bool = False) -> str:
     # Default is the Opus style
     style_def = "Style: Default,Arial,65,&H0000FFFF,&H0000FFFF,&H00000000,&H7F000000,-1,0,0,0,100,100,0,0,1,3,2,2,30,30,130,1"
     
@@ -39,6 +39,9 @@ def build_ass(play_res_x: int, play_res_y: int, lines: list[dict], style_name: s
     elif style_name == "karaoke_magenta":
         # Base: Light Pink, Highlight: Magenta, Font: Comic Sans MS (Bold)
         style_def = "Style: Default,Comic Sans MS,60,&H00FFE0FF,&H00FFE0FF,&H00000000,&H7F000000,-1,0,0,0,100,100,0,0,1,3,3,2,30,30,130,1"
+
+    if watermark:
+        style_def += "\nStyle: Watermark,Segoe Script,38,&HC0FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,0,0,9,30,30,30,1"
 
     header = "\n".join(
         [
@@ -182,6 +185,11 @@ def build_ass(play_res_x: int, play_res_y: int, lines: list[dict], style_name: s
             
         ev.append(f"Dialogue: 0,{to_ass_time(start_t)},{to_ass_time(end_t)},Default,,0,0,0,,{text_out}")
 
+        ev.append(f"Dialogue: 0,{to_ass_time(start_t)},{to_ass_time(end_t)},Default,,0,0,0,,{text_out}")
+
+    if watermark:
+        ev.append("Dialogue: 0,0:00:00.00,9:59:59.99,Watermark,,0,0,0,,Angel R")
+
     return header + "\n" + "\n".join(ev) + "\n"
 
 
@@ -206,6 +214,7 @@ def main():
         clips_data = json.load(f)
         clips = clips_data.get("clips", [])
         subtitle_style = clips_data.get("subtitleStyle", "opus")
+        watermark = clips_data.get("watermark", False)
 
     captions = None
     captions_path = (args.captions_json or "").strip() or None
@@ -265,7 +274,7 @@ def main():
             if local_lines:
                 ass_path = os.path.join(args.outdir, f"clip_{i:02d}.ass")
                 with open(ass_path, "w", encoding="utf-8") as f:
-                    f.write(build_ass(play_res_x, play_res_y, local_lines, subtitle_style))
+                    f.write(build_ass(play_res_x, play_res_y, local_lines, subtitle_style, watermark))
                 ass_path_ff = ass_path.replace("\\", "/").replace(":", "\\:")
                 ass_path_ff = ass_path_ff.replace("'", "\\'")
                 vf_parts.append(f"ass=filename='{ass_path_ff}'")

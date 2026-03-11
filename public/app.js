@@ -633,11 +633,14 @@ submitClipsBtn.addEventListener("click", async () => {
   const subtitleSelect = document.getElementById("subtitleStyleSelect");
   const subtitleStyle = subtitleSelect ? subtitleSelect.value : "opus";
 
+  const watermarkCheckbox = document.getElementById("watermarkCheckbox");
+  const watermark = watermarkCheckbox ? watermarkCheckbox.checked : false;
+
   try {
     const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/clips`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clips, subtitleStyle }),
+      body: JSON.stringify({ clips, subtitleStyle, watermark }),
     });
 
     if (res.ok) {

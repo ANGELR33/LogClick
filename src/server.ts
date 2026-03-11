@@ -83,8 +83,9 @@ app.post("/api/jobs/:jobId/clips", async (req, res) => {
   }
 
   const subtitleStyle = req.body.subtitleStyle || "opus";
+  const watermark = req.body.watermark === true;
   const clipsJsonPath = getJobArtifactPath(job.id, "clips.json");
-  await fs.promises.writeFile(clipsJsonPath, JSON.stringify({ clips, subtitleStyle }, null,  2));
+  await fs.promises.writeFile(clipsJsonPath, JSON.stringify({ clips, subtitleStyle, watermark }, null,  2));
 
   // Start the background rendering
   resumeJobPipeline(job.id).catch(console.error);
