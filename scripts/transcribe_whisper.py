@@ -70,23 +70,49 @@ def main():
             info = InfoFallback()
 
     segments = []
+    MAX_WORDS = 4
     for s in segments_iter:
-        seg = {
-            "start": float(s.start),
-            "end": float(s.end),
-            "text": s.text,
-        }
-        if getattr(s, "words", None):
-            seg["words"] = [
-                {
-                    "start": float(w.start),
-                    "end": float(w.end),
-                    "text": w.word,
-                }
-                for w in s.words
-                if w is not None
-            ]
-        segments.append(seg)
+        if getattr(s, "words", None) and len(s.words) > 0:
+            chunk_words = []
+            for w in s.words:
+                if w is None:
+                    continue
+                chunk_words.append(w)
+                word_clean = w.word.strip()
+                ends_with_punct = False
+                if len(word_clean) > 0 and word_clean[-1] in ".?!":
+                    ends_with_punct = True
+                
+                if len(chunk_words) >= MAX_WORDS or ends_with_punct:
+                    chunk_text = "".join([cw.word for cw in chunk_words])
+                    segments.append({
+                        "start": float(chunk_words[0].start),
+                        "end": float(chunk_words[-1].end),
+                        "text": chunk_text.strip(),
+                        "words": [
+                            {"start": float(cw.start), "end": float(cw.end), "text": cw.word.strip()} 
+                            for cw in chunk_words
+                        ]
+                    })
+                    chunk_words = []
+            if chunk_words:
+                chunk_text = "".join([cw.word for cw in chunk_words])
+                segments.append({
+                    "start": float(chunk_words[0].start),
+                    "end": float(chunk_words[-1].end),
+                    "text": chunk_text.strip(),
+                    "words": [
+                        {"start": float(cw.start), "end": float(cw.end), "text": cw.word.strip()} 
+                        for cw in chunk_words
+                    ]
+                })
+        else:
+            seg = {
+                "start": float(s.start),
+                "end": float(s.end),
+                "text": s.text.strip(),
+            }
+            segments.append(seg)
 
     payload = {
         "language": info.language,
