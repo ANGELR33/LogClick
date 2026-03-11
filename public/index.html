@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpusClip Clone</title>
+    <!-- Use FontAwesome for icons assuming standard web integration, or similar unicode -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-top">
+            <button class="nav-ico"><i class="fa-solid fa-arrow-right-to-bracket"></i></button>
+            <div class="profile-pic">
+                <img src="https://ui-avatars.com/api/?name=User&background=333&color=fff" alt="User">
+            </div>
+            <button class="nav-ico"><i class="fa-solid fa-user-plus"></i></button>
+        </div>
+        <div class="sidebar-menu">
+            <button class="nav-ico active"><i class="fa-solid fa-house"></i></button>
+            <button class="nav-ico"><i class="fa-solid fa-border-all"></i></button>
+            <button class="nav-ico"><i class="fa-regular fa-folder"></i></button>
+            <button class="nav-ico"><i class="fa-regular fa-calendar"></i></button>
+            <button class="nav-ico"><i class="fa-solid fa-chart-simple"></i></button>
+            <button class="nav-ico"><i class="fa-solid fa-link"></i></button>
+        </div>
+        <div class="sidebar-bottom">
+            <button class="nav-ico"><i class="fa-solid fa-crown"></i></button>
+            <button class="nav-ico"><i class="fa-solid fa-book"></i></button>
+            <button class="nav-ico"><i class="fa-regular fa-circle-question"></i></button>
+        </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="main-content">
+        <!-- TOP WARN BANNER -->
+        <div class="top-banner">
+            <span>🚧 We're currently experiencing a higher-than-normal error rate for YouTube-related downloads. We are actively investigating and working to restore the service as quickly as possible. →</span>
+        </div>
+
+        <header class="header">
+            <div class="header-left">
+                <div class="plan-info">
+                    <span>Estás utilizando el plan Gratis de OpusClip con marca de agua y funciones limitadas.</span>
+                    <button class="btn-upgrade">Mejorar</button>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="ico-btn notification"><i class="fa-regular fa-bell"></i><span class="badge">1</span></button>
+                <div class="credits"><i class="fa-solid fa-bolt" style="color:#eab308;"></i> 13</div>
+                <button class="btn-credits">Añadir más créditos</button>
+            </div>
+        </header>
+
+        <div class="center-stage">
+            <h1 class="logo-watermark">OpusClip</h1>
+            <h2 class="hero-title">OpusClip</h2>
+
+            <div class="upload-box-wrapper">
+                <form id="uploadForm" class="upload-form">
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-link link-icon"></i>
+                        <input type="text" placeholder="Coloca un enlace de Twitch" disabled />
+                    </div>
+                    <div class="upload-actions">
+                        <label for="videoInput" class="upload-btn-label">
+                            <i class="fa-solid fa-arrow-up-from-bracket"></i> Subir
+                            <!-- Real Input (hidden) -->
+                            <input id="videoInput" name="video" type="file" accept="video/*" required />
+                        </label>
+                        <button type="button" class="drive-btn"><i class="fa-brands fa-google-drive"></i> Google Drive</button>
+                    </div>
+
+                    <!-- Hidden config required by JS -->
+                    <select id="aggressiveness" style="display:none;">
+                        <option value="medium" selected>Normal</option>
+                    </select>
+
+                    <button id="uploadBtn" type="submit" class="primary-btn">Obtén clips en 1 clic</button>
+                </form>
+            </div>
+
+            <!-- Features Row -->
+            <div class="features-row">
+                <div class="feature"><div class="fi f-star"><i class="fa-solid fa-sparkles"></i></div><span>Convertir largos en<br>cortos</span></div>
+                <div class="feature"><div class="fi f-cc"><i class="fa-solid fa-closed-captioning"></i></div><span>Subtitulos con IA</span></div>
+                <div class="feature"><div class="fi f-cut"><i class="fa-solid fa-scissors"></i></div><span>Editor de video</span></div>
+                <div class="feature"><div class="fi f-voice"><i class="fa-solid fa-chart-bar"></i></div><span>Mejorar voz</span></div>
+                <div class="feature"><div class="fi f-frame"><i class="fa-regular fa-square"></i></div><span>Reencuadre con IA</span></div>
+                <div class="feature"><div class="fi f-broll"><i class="fa-solid fa-film"></i></div><span>B-Roll con IA</span></div>
+                <div class="feature"><div class="fi f-hook"><i class="fa-solid fa-head-side-cough"></i></div><span>Gancho de IA</span></div>
+            </div>
+        </div>
+
+        <!-- JOB STATUS UI (Hidden initially, toggled by JS like manual clips) -->
+        <section id="jobTracker" class="job-tracker" style="display:none;">
+           <div class="tracker-card">
+              <h3>Estado del proceso</h3>
+              <div class="statusGrid" style="margin-bottom: 1rem;">
+                <div id="statusLine" class="status"></div>
+                <div class="progressWrap"><div class="progressBar" id="progressBar"></div></div>
+                <div id="stageLine" class="muted"></div>
+                <div id="warningLine" class="warning" style="display:none"></div>
+              </div>
+              
+              <div id="completedActions" style="display:none; margin-bottom: 1rem;">
+                  <button id="viewClipsBtn" type="button" class="primary-btn"><i class="fa-solid fa-play"></i> Ver mis recortes generados</button>
+              </div>
+              
+              <details class="details"><summary>Detalles técnicos (Logs)</summary><pre id="jobStatus" class="pre"></pre></details>
+              
+              <!-- Hidden required IDs -->
+              <div style="display:none">
+                  <input id="jobIdInput" type="text" />
+                  <button id="loadJobBtn" type="button">Load</button>
+                  <button id="resetBtn" type="button">Reset</button>
+                  <a id="srtLink"></a><a id="jsonLink"></a><a id="scenesLink"></a><a id="zipLink"></a><div id="clips"></div>
+              </div>
+
+           </div>
+        </section>
+
+        <!-- MANUAL CLIPS UI -->
+        <section id="manualClipsSection" class="card manual-clips-card" style="display: none;">
+            <div class="cardHeader">
+                <h2>Recorte Manual</h2>
+                <div class="cardHint muted">Ingresa los tiempos de inicio y fin para tus clips.</div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <video id="previewVideo" controls preload="metadata" style="width: 100%; border-radius: 8px; background: #000;"></video>
+            </div>
+            <!-- Timeline UI -->
+            <div class="timeline-container">
+                <div class="timeline-track" id="timelineTrack">
+                <div class="timeline-selection" id="timelineSelection"></div>
+                <div class="timeline-handle handle-left" id="handleLeft"></div>
+                <div class="timeline-handle handle-right" id="handleRight"></div>
+                </div>
+                <div class="timeline-labels">
+                <span id="timeStartLabel">00:00.0</span>
+                <span id="timeEndLabel">00:00.0</span>
+                </div>
+                <div class="timeline-controls">
+                <div style="display: flex; gap: 8px;">
+                    <button id="setStartBtn" type="button" class="btn secondary" style="font-size: 13px;">[ Marcar Inicio</button>
+                    <button id="setEndBtn" type="button" class="btn secondary" style="font-size: 13px;">Marcar Fin ]</button>
+                </div>
+                <button id="addClipSelectionBtn" type="button" class="btn" style="font-size: 13px;">+ Añadir a la Lista</button>
+                </div>
+            </div>
+
+            <div id="clipInputsList" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;">
+                <!-- Valid clips will be rendered here as nice cards -->
+            </div>
+            
+            <div class="row actions" style="justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="muted" style="font-size: 13px;">Estilo de subtítulos:</span>
+                    <select id="subtitleStyleSelect" class="btn secondary" style="width: auto; padding: 6px 12px; font-size: 13px;">
+                        <option value="opus" selected>Opus (Amarillo + Pop)</option>
+                        <option value="clean">Clean (Blanco + Suave)</option>
+                        <option value="neon">Neon (Cian + Rebote)</option>
+                    </select>
+                </div>
+                <button id="submitClipsBtn" type="button" class="primary-btn" style="padding: 12px 24px;">Procesar Clips <span id="clipsCountBadge"></span></button>
+            </div>
+        </section>
+
+        <!-- Projects List (Bottom) -->
+        <div class="projects-section">
+            <div class="projects-header">
+                <div class="tabs">
+                    <button class="active">Todos los proyectos (1)</button>
+                    <button>Proyectos guardados (0)</button>
+                </div>
+                <div class="storage-info">
+                    <span class="storage-text">0 GB / 0 GB</span>
+                    <label class="toggle-switch"><input type="checkbox" checked/> <span class="slider"></span> Auto-guardar</label>
+                    <label class="toggle-switch"><input type="checkbox"/> <span class="slider"></span> Auto-importar <span>Beta</span></label>
+                </div>
+            </div>
+
+            <div class="projects-grid" id="projectsGrid">
+                <!-- Proyectos dinámicos aquí -->
+            </div>
+        </div>
+
+        <!-- CLIPS MODAL FOR PROJECT -->
+        <div id="projectModal" class="modal-backdrop" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 1000; align-items:center; justify-content:center;">
+            <div class="modal-content" style="background:#1e1e1e; border: 1px solid #333; padding: 2rem; border-radius: 12px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                    <h2 id="modalProjectTitle" style="margin:0;">Project Clips</h2>
+                    <button class="nav-ico" onclick="document.getElementById('projectModal').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="modalClipsGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+                    <!-- Clips go here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Floating Help -->
+    <button class="floating-help">¿Preguntas?</button>
+</div>
+
+<!-- Extra job UI trigger script to make sure we show job ui if job is active -->
+<script src="/app.js" type="module"></script>
+<script>
+    // Just map standard upload submit to show basic tracker block
+    const upBtn = document.getElementById('uploadBtn');
+    if(upBtn) {
+        upBtn.addEventListener('click', () => {
+            const vi = document.getElementById('videoInput');
+            if(vi.files.length > 0) {
+                document.getElementById('jobTracker').style.display = 'block';
+                document.getElementById('jobTracker').scrollIntoView({behavior: 'smooth'});
+            }
+        });
+    }
+</script>
+</body>
+</html>
